@@ -25,7 +25,7 @@ The Python package root is `test_saas` (`src/test_saas/`).
 | Module | Purpose | May import |
 |--------|---------|------------|
 | `identity` | Domain: turns verified token claims into the authenticated user (username and groups). | nothing |
-| `settings` | Reads runtime configuration (Keycloak issuer URL, client ID, expected audience) from environment variables. | nothing |
+| `settings` | Reads runtime configuration (Keycloak issuer URL, expected audience) from environment variables. | nothing |
 | `token_verification` | Adapter: verifies a bearer token's signature and expiry against Keycloak's JWKS and returns its claims. | `settings` |
 | `api` | Transport: the FastAPI app and its HTTP endpoints. | `identity`, `settings`, `token_verification` |
 
