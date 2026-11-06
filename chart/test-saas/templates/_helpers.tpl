@@ -5,9 +5,10 @@
 
 {{/* Selector labels; stable across upgrades, so no version in them. */}}
 {{- define "test-saas.selectorLabels" -}}
-app.kubernetes.io/name: {{ .root.Chart.Name }}
-app.kubernetes.io/instance: {{ .root.Release.Name }}
-app.kubernetes.io/component: {{ .component }}
+{{- /* quote: release names like "true" or "123" would otherwise render as YAML bool/int. */}}
+app.kubernetes.io/name: {{ .root.Chart.Name | quote }}
+app.kubernetes.io/instance: {{ .root.Release.Name | quote }}
+app.kubernetes.io/component: {{ .component | quote }}
 {{- end -}}
 
 {{- define "test-saas.labels" -}}
