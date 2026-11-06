@@ -65,9 +65,12 @@ def mint_access_token(signing_key: rsa.RSAPrivateKey) -> TokenMinter:
             "aud": TEST_AUDIENCE,
             "iat": issued_at,
             "exp": issued_at + TOKEN_LIFETIME_SECONDS,
+            "typ": "Bearer",
             "preferred_username": "alice",
         }
         claims |= claim_overrides
+        # An override of None removes the claim, to mint tokens that lack it.
+        claims = {name: value for name, value in claims.items() if value is not None}
         return jwt.encode(
             claims, signing_key, algorithm="RS256", headers={"kid": TEST_KEY_ID}
         )
