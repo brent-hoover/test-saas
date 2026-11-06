@@ -111,3 +111,4 @@ cython_debug/
 # roborev snapshots
 /.roborev/
 .kata.local.toml
+.worktrees/
