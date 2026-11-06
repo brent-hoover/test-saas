@@ -110,3 +110,4 @@ cython_debug/
 .superpowers/
 # roborev snapshots
 /.roborev/
+.kata.local.toml
