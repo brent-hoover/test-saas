@@ -15,13 +15,17 @@ require() {
     exit 1
   fi
   # Values are written inside a JS string literal; refuse characters that could
-  # break out of it rather than escaping them.
+  # break out of it or end it early, rather than escaping them.
   case "$value" in
     *'"'* | *'\'* | *'<'* )
       echo "render-config: $name contains a quote, backslash, or '<'; refusing to render" >&2
       exit 1
       ;;
   esac
+  if [ "$(printf '%s' "$value" | tr -d '\r\n')" != "$value" ]; then
+    echo "render-config: $name contains a line break; refusing to render" >&2
+    exit 1
+  fi
   printf '%s' "$value"
 }
 
