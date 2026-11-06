@@ -3,11 +3,11 @@
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 __all__ = [
     "AuthenticatedUser",
-    "MissingUsernameError",
+    "InvalidIdentityClaimsError",
     "authenticated_user_from_claims",
 ]
 
@@ -15,14 +15,15 @@ USERNAME_CLAIM = "preferred_username"
 GROUPS_CLAIM = "groups"
 
 
-class MissingUsernameError(Exception):
-    """Verified claims carry no non-empty `preferred_username`."""
+class InvalidIdentityClaimsError(Exception):
+    """Verified claims lack a non-empty string username or a list-of-strings groups."""
 
 
 class AuthenticatedUser(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    # strict: claims are shown verbatim, so no coercion (e.g. 42 -> "42").
+    model_config = ConfigDict(frozen=True, strict=True)
 
-    username: str
+    username: str = Field(min_length=1)
     groups: list[str]
 
 
@@ -33,7 +34,15 @@ def authenticated_user_from_claims(claims: Mapping[str, Any]) -> AuthenticatedUs
     exactly what Keycloak issued. A missing groups claim is an empty list,
     which makes a missing groups mapper visible instead of an error.
     """
-    username = claims.get(USERNAME_CLAIM)
-    if not username:
-        raise MissingUsernameError(f"verified claims have no {USERNAME_CLAIM} claim")
-    return AuthenticatedUser(username=username, groups=claims.get(GROUPS_CLAIM, []))
+    try:
+        return AuthenticatedUser.model_validate(
+            {
+                "username": claims.get(USERNAME_CLAIM),
+                "groups": claims.get(GROUPS_CLAIM, []),
+            }
+        )
+    except ValidationError as error:
+        raise InvalidIdentityClaimsError(
+            f"token claims {USERNAME_CLAIM!r}/{GROUPS_CLAIM!r} are missing or malformed: "
+            f"{error.errors(include_url=False)}"
+        ) from error

@@ -9,7 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from test_saas.identity import (
     AuthenticatedUser,
-    MissingUsernameError,
+    InvalidIdentityClaimsError,
     authenticated_user_from_claims,
 )
 from test_saas.settings import Settings, load_settings
@@ -47,7 +47,7 @@ def create_app(settings: Settings, signing_keys: jwt.PyJWKClient) -> FastAPI:
                 credentials.credentials, settings, signing_keys
             )
             return authenticated_user_from_claims(claims)
-        except (InvalidTokenError, MissingUsernameError) as error:
+        except (InvalidTokenError, InvalidIdentityClaimsError) as error:
             raise _unauthorized(str(error)) from error
 
     @app.get("/api/groups")
