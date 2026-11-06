@@ -5,6 +5,7 @@ This chart creates no Ingress or TLS. Route https://{{ .Values.host }}/ in Istio
   /     -> Service {{ .Release.Name }}-client, port 80
 
 Keycloak client "{{ .Values.oidc.clientId }}" needs:
-  - valid redirect URI and web origin https://{{ .Values.host }}/
+  - valid redirect URI https://{{ .Values.host }}/
+  - web origin https://{{ .Values.host }} (no trailing slash)
   - standard flow on, direct access grants off, public client (PKCE)
   - a groups mapper, and an audience mapper emitting "{{ .Values.oidc.audience }}"

@@ -35,7 +35,9 @@ On the realm, create or edit the client the browser logs in with:
 
 - Client authentication **off** (public client; the browser uses PKCE).
 - Standard flow **on**; Direct access grants **off**.
-- Valid redirect URI and Web origin: `https://<host>/`.
+- Valid redirect URI: `https://<host>/`.
+- Web origin: `https://<host>` (no trailing slash; it must match the browser's
+  `Origin` header, or CORS blocks the code exchange).
 - A **groups** mapper (Group Membership) adding `groups` to the access token.
 - An **audience** mapper adding the value you pass as `oidc.audience` to the
   access token's `aud`.
