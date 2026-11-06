@@ -14,26 +14,23 @@ NON_SOURCE_ENTRIES = {"__init__.py", "__pycache__"}
 
 
 def test_no_undeclared_modules() -> None:
-    """Every source entry under src/test_saas/ must be a declared module.
+    """Every source entry under src/test_saas/ must be a declared module
+    directory.
 
     Packages (including `_private` ones) and standalone `.py` files both
-    count: archunitpython assigns no layer to anything outside the declared
-    folders and skips its edges, so an undeclared entry would let imports
-    bypass every rule below."""
-    actual_modules = {
-        _module_name(path)
+    count, compared by their raw name: archunitpython layers are defined by
+    folder, so a file such as `identity.py` is assigned no layer and its
+    edges are skipped. Requiring the exact directory name keeps every import
+    under a rule below."""
+    actual_entries = {
+        path.name
         for path in PACKAGE_ROOT.iterdir()
         if path.name not in NON_SOURCE_ENTRIES and not path.name.startswith(".")
     }
-    assert actual_modules == DECLARED_MODULES, (
-        f"source entries {actual_modules} != declared {DECLARED_MODULES}"
+    assert actual_entries == DECLARED_MODULES, (
+        f"source entries {actual_entries} != declared module dirs {DECLARED_MODULES}"
     )
-
-
-def _module_name(path: pathlib.Path) -> str:
-    if path.is_file():
-        return path.stem
-    return path.name
+    assert all((PACKAGE_ROOT / name).is_dir() for name in DECLARED_MODULES)
 
 
 def _layers():
