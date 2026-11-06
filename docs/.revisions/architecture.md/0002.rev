@@ -1,0 +1,78 @@
+---
+phase: architecture
+status: approved
+approved: 2026-11-05
+rules: ./arch-rules.yaml
+date: 2026-11-05
+---
+<!-- CONTRACT: Module boundaries and WHY they sit where they do. The
+     machine-readable source of truth is arch-rules.yaml — this doc must
+     agree with it exactly. Entity shapes live in data-models.md. -->
+
+# Test SaaS — Architecture
+
+## Style
+Layered (domain, adapter, transport) for the backend API, the only Python
+code. vision.md's backend API has one domain rule (turn verified claims
+into the user and their groups), one external dependency (Keycloak's
+signing keys), and one transport (HTTP). Each sits in its own module, so
+the domain rule is testable without HTTP or a live identity provider, as
+stack.md's offline test suite requires.
+
+The Python package root is `test_saas` (`src/test_saas/`).
+
+## Modules
+| Module | Purpose | May import |
+|--------|---------|------------|
+| `identity` | Domain: turns verified token claims into the authenticated user (username and groups). | nothing |
+| `settings` | Reads runtime configuration (Keycloak issuer URL, expected audience) from environment variables. | nothing |
+| `token_verification` | Adapter: verifies a bearer token's signature and expiry against Keycloak's JWKS and returns its claims. | `settings` |
+| `api` | Transport: the FastAPI app and its HTTP endpoints. | `identity`, `settings`, `token_verification` |
+
+**The .md and .yaml must agree exactly** — same module names, same
+may_import lists. The architecture-reviewer diffs them. `may_import` is the
+source of truth (a dependency you don't want is simply left out of it);
+`rules:` holds only `no_cycles`.
+
+### API endpoints
+All routes sit under `/api`, so Istio routes that path prefix to the API
+Service with no rewrite (stack.md, Deployment target).
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /api/groups` | Bearer token | Returns the authenticated user's username and groups (vision.md, criteria 3 and 4). |
+| `GET /api/healthz` | None | Liveness: 200 while the process is serving. |
+| `GET /api/readyz` | None | Readiness: 200 once settings have loaded. It does not call Keycloak, so an identity provider outage does not remove pods from the Service. |
+
+### Outside the import graph
+These components hold no Python and have no `may_import` entry:
+- Browser client: static JavaScript, the vendored `oidc-client-ts`, a
+  `config.js` template, and its image definition. nginx serves it, and its
+  pods are probed on `/`.
+- Helm chart: the two Deployments and two Services (stack.md, Deployment
+  target).
+
+## Rationale
+- `identity` imports nothing. It is the one rule vision.md tests (exactly
+  the assigned groups, criterion 3), so it stays free of HTTP, JWT, and
+  configuration code.
+- `token_verification` is the only module that touches untrusted input: the
+  raw bearer token. It returns claims only after signature and expiry pass,
+  so no other module handles an unverified token (criterion 4). It imports
+  `settings` for the issuer and audience it verifies against.
+- `settings` imports nothing, so every other module can depend on it
+  without a cycle.
+- `api` sits on top and wires the others together. It imports `settings`
+  to build the verifier and to report readiness on `/api/readyz`. Nothing
+  imports `api`, so the HTTP framework can change without touching the
+  domain or the verification logic.
+- Expected change points: a change to Keycloak's signing keys, algorithm,
+  issuer, or audience lands in `token_verification`. A change to claim
+  names (the `groups` or username claim) lands in `identity`. Neither
+  changes `api`'s endpoint contract.
+
+## Enforcement
+Rules are codified in [arch-rules.yaml](./arch-rules.yaml) and generated
+into architecture tests at scaffold time (see docs/scaffold.md once
+scaffolded). The YAML is the source of truth; regenerate tests rather than
+hand-editing them.

@@ -1,0 +1,112 @@
+---
+phase: stack
+status: draft
+approved: null
+language: python
+date: 2026-11-05
+---
+<!-- CONTRACT: Records stack decisions ADR-style, one entry per dimension,
+     each with alternatives and rationale. The `language` frontmatter field
+     gates the scaffold phase. No module boundaries — that's architecture.md. -->
+
+# Test SaaS — Stack
+
+## Language
+- **Decision:** Python 3.15 for the backend API. Plain JavaScript (ES
+  modules, no build step) for the browser client.
+- **Alternatives considered:**
+  - TypeScript client — needs a compile or bundle step for a client that
+    only redirects, refreshes, fetches once, and displays.
+  - Go backend — a single token-verifying endpoint gains nothing from Go,
+    the operator is a Go beginner, and the existing stub is already Python.
+- **Rationale:** The existing project stub already targets Python 3.15,
+  and 3.15.0 is installed locally. The operator's brief asks for a
+  JavaScript client. The client's job in vision.md (login, refresh,
+  display groups) is small enough to need no toolchain.
+
+## Framework
+- **Decision:**
+  - Backend API: FastAPI served by uvicorn. PyJWT[crypto] verifies tokens:
+    `PyJWKClient` fetches the identity provider's signing keys (JWKS, the
+    JSON Web Key Set), and PyJWT checks signature and expiry.
+  - Browser client: `oidc-client-ts`, vendored as a single ES module file.
+    It runs the authorization-code flow with PKCE (Proof Key for Code
+    Exchange), exchanges the code for tokens, and refreshes them.
+  - Client service: nginx (`nginxinc/nginx-unprivileged`) serving the
+    static files and a `config.js` rendered from environment variables at
+    container start.
+  - Identity provider: Keycloak. This is an operator constraint (the
+    environment under test), not a stack choice.
+  - The stub's Flask dependency is removed.
+- **Alternatives considered:**
+  - Flask for the API — token verification and JSON error responses take
+    more hand-written code.
+  - Hand-rolled OIDC in the client — PKCE, state checks, and refresh
+    written by hand would put the app's bugs in the path being validated.
+  - The API also serving the client — collapses the two components
+    vision.md defines.
+- **Rationale:** FastAPI is the operator's default for web APIs. Library
+  implementations of token verification and of the authorization-code flow
+  mean a failed login points at the identity provider setup, which is what
+  vision.md's success criteria 1, 2, 4, and 5 test.
+
+## Storage
+- **Decision:** None. The API is stateless: it reads groups from each
+  verified token and caches signing keys in memory. The client keeps
+  tokens in browser session storage, the `oidc-client-ts` default.
+- **Alternatives considered:**
+  - In-memory token storage in the client — a page reload drops the
+    session.
+  - Server-side session store (backend-for-frontend) — a different
+    architecture from the browser client holding the token.
+- **Rationale:** vision.md has no data beyond the token's claims. Session
+  storage keeps the session across page reloads, so the operator can
+  observe token refresh (criterion 5).
+
+## Packaging & tooling
+- **Decision:**
+  - Python: uv (dependencies and lock), ruff (lint and format), ty (type
+    check), pytest and pytest-bdd (tests), pytest-gremlins (mutation
+    testing).
+  - API tests sign tokens with a locally generated key against a fixture
+    JWKS. No live identity provider is needed.
+  - API image: multi-stage (uv build stage, slim Python 3.15 runtime,
+    non-root, uvicorn).
+  - Client image: built on `nginxinc/nginx-unprivileged`.
+  - Browser client: no JavaScript tooling.
+  - Criteria 1, 2, 3, and 5 need a real browser and Keycloak. They are
+    verified manually against a deployed release; agent-browser may drive
+    the browser as an aid.
+- **Alternatives considered:**
+  - Playwright plus a Keycloak test container — a fully automated
+    end-to-end suite, but heavier, and it needs Docker in the test loop.
+  - pip or poetry — uv is the operator's default.
+- **Rationale:** The automated suite covers what runs offline: criterion 4
+  and the "get groups" response. Criteria 1, 2, 3, and 5 depend on the real
+  identity provider, so they are checked against a deployed release.
+
+## Deployment target
+- **Decision:** Kubernetes, via one Helm chart.
+  - The chart holds two Deployments, each with a Service: `client` and
+    `api`. It holds no Ingress and no TLS configuration.
+  - External routing and TLS are provided by the cluster's Istio
+    configuration, outside the chart. The client and API share one
+    hostname, and Istio routes by path to each Service, so the API needs no
+    CORS.
+  - Images are pushed to GHCR (GitHub Container Registry) under the
+    operator's personal account: `ghcr.io/brent-hoover/test-saas-api` and
+    `ghcr.io/brent-hoover/test-saas-client`. These are the chart's default
+    image repositories.
+  - Chart values: image repositories and tags, Keycloak issuer URL, client
+    ID, and expected audience.
+  - Install and remove with `helm install` and `helm uninstall`
+    (criterion 7).
+  - The Keycloak client is configured outside the chart; the README
+    documents the required settings.
+- **Alternatives considered:**
+  - Ingress or TLS in the chart — routing and TLS belong to Istio, so the
+    app stays unaware of them.
+  - Separate origins for client and API — needs CORS on the API.
+  - Raw manifests or kustomize — the operator asked for Helm.
+- **Rationale:** vision.md requires one install and one uninstall command
+  (criterion 7) and images pushed to a registry (criterion 6).
