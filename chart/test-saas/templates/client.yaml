@@ -1,0 +1,68 @@
+{{- $component := dict "root" . "component" "client" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "test-saas.componentName" $component }}
+  labels:
+    {{- include "test-saas.labels" $component | nindent 4 }}
+spec:
+  replicas: {{ .Values.client.replicas }}
+  selector:
+    matchLabels:
+      {{- include "test-saas.selectorLabels" $component | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "test-saas.labels" $component | nindent 8 }}
+    spec:
+      securityContext:
+        {{- include "test-saas.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: client
+          image: {{ include "test-saas.image" (dict "root" . "image" .Values.client.image) }}
+          imagePullPolicy: {{ .Values.client.image.pullPolicy }}
+          env:
+            - name: OIDC_ISSUER_URL
+              value: {{ required "oidc.issuerUrl is required" .Values.oidc.issuerUrl | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ required "oidc.clientId is required" .Values.oidc.clientId | quote }}
+            - name: OIDC_REDIRECT_URI
+              value: {{ printf "https://%s/" (required "host is required" .Values.host) | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          securityContext:
+            {{- include "test-saas.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            # Read-only root filesystem: nginx needs writable /tmp for its pid,
+            # temp files, and the rendered config.js.
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.client.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "test-saas.componentName" $component }}
+  labels:
+    {{- include "test-saas.labels" $component | nindent 4 }}
+spec:
+  selector:
+    {{- include "test-saas.selectorLabels" $component | nindent 4 }}
+  ports:
+    # Port name prefix "http" tells Istio the protocol.
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,37 @@
+# External hostname Istio serves this app on. Used only to build the client's
+# OIDC redirect URI (https://<host>/); routing itself lives in Istio, outside
+# this chart. Required.
+host: ""
+
+oidc:
+  # Keycloak realm issuer, e.g. https://keycloak.example.com/realms/test. Must
+  # equal the tokens' iss claim exactly. Required.
+  issuerUrl: ""
+  # Keycloak client the browser logs in with (public client, standard flow on,
+  # direct access grants off). Required.
+  clientId: ""
+  # Value the API requires in the access token's aud claim; add an audience
+  # mapper on the Keycloak client that emits it. Required.
+  audience: ""
+
+api:
+  image:
+    repository: ghcr.io/brent-hoover/test-saas-api
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {memory: 256Mi}
+
+client:
+  image:
+    repository: ghcr.io/brent-hoover/test-saas-client
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests: {cpu: 10m, memory: 16Mi}
+    limits: {memory: 64Mi}
