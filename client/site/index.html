@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test SaaS</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <main>
+      <h1>Test SaaS</h1>
+      <p id="status">Loading…</p>
+      <section id="identity" hidden>
+        <p>Logged in as <strong id="username"></strong></p>
+        <h2>Groups</h2>
+        <ul id="groups"></ul>
+        <p id="no-groups" hidden>No groups in token.</p>
+      </section>
+    </main>
+    <!-- Order matters: config.js (rendered at container start) and the vendored
+         library define window.TEST_SAAS_CONFIG and window.oidc for app.js. -->
+    <script src="/config.js"></script>
+    <script src="/vendor/oidc-client-ts-3.5.0.min.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
