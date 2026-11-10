@@ -1,0 +1,13 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem;
+  color: #1a1a1a;
+}
+
+main {
+  max-width: 40rem;
+}
+
+#status.error {
+  color: #b00020;
+}

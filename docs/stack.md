@@ -98,7 +98,8 @@ date: 2026-11-05
     `ghcr.io/brent-hoover/test-saas-client`. These are the chart's default
     image repositories.
   - Chart values: image repositories and tags, Keycloak issuer URL, client
-    ID, and expected audience.
+    ID, expected audience, and `host` (the external hostname, used only to
+    build the client's redirect URI `https://<host>/`).
   - Install and remove with `helm install` and `helm uninstall`
     (criterion 7).
   - The Keycloak client is configured outside the chart; the README

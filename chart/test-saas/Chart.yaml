@@ -1,0 +1,6 @@
+apiVersion: v2
+name: test-saas
+description: Test SaaS — browser client and API for validating Keycloak OIDC login. No Ingress or TLS; Istio routes / and /api to the two Services.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

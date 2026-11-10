@@ -1,0 +1,13 @@
+.git
+.venv
+.worktrees
+.md-review
+.roborev
+.pytest_cache
+.ruff_cache
+**/__pycache__
+.idea
+chart
+client
+docs
+tests
