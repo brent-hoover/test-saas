@@ -96,7 +96,10 @@ date: 2026-11-05
   - Images are pushed to GHCR (GitHub Container Registry) under the
     operator's personal account: `ghcr.io/brent-hoover/test-saas-api` and
     `ghcr.io/brent-hoover/test-saas-client`. These are the chart's default
-    image repositories.
+    image repositories. A GitHub Actions workflow builds both images for
+    amd64 and arm64 and pushes them when a `v<version>` tag is pushed, so
+    no registry credentials live on a workstation. The packages are public,
+    so the cluster needs no pull secret.
   - Chart values: image repositories and tags, Keycloak issuer URL, client
     ID, expected audience, and `host` (the external hostname, used only to
     build the client's redirect URI `https://<host>/`).

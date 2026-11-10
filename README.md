@@ -18,16 +18,26 @@ uv run ruff check . && uv run ruff format --check . && uv run ty check
 
 ## Build and push the images
 
+Pushing a version tag runs the `images` GitHub Actions workflow, which builds
+both images for linux/amd64 and linux/arm64 and pushes them to GHCR, tagged
+with the version without the `v`:
+
 ```bash
-TAG=0.1.0
-docker build -t ghcr.io/brent-hoover/test-saas-api:$TAG .
-docker build -t ghcr.io/brent-hoover/test-saas-client:$TAG client/
-docker push ghcr.io/brent-hoover/test-saas-api:$TAG
-docker push ghcr.io/brent-hoover/test-saas-client:$TAG
+TAG=0.1.0                 # keep equal to appVersion in chart/test-saas/Chart.yaml
+git tag v$TAG && git push origin v$TAG
+gh run watch              # follow the build
 ```
 
-Build for the cluster's architecture (e.g. `--platform linux/amd64` when
-building on Apple silicon for amd64 nodes).
+Packages GHCR creates on the first push are private; make
+`test-saas-api` and `test-saas-client` public in the package settings so the
+cluster can pull without a pull secret.
+
+To build locally instead (for your machine's architecture):
+
+```bash
+docker build -t test-saas-api:dev .
+docker build -t test-saas-client:dev client/
+```
 
 ## Configure Keycloak
 
